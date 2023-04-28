@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+.Renviron
+Charts/
+Data/
+Methodology/
+Output/
+Paper/
+PowerPoint/
+sourcecode/
+Code/Archive/
+Code/test/
