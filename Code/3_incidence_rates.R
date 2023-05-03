@@ -191,15 +191,15 @@ site_sex_reg_mod_output <- inc_rate_site_data %>%
 # Rename columns to indicate observed or expected
 
 obs_inc_site_sex_output <- calculate_incidence(site_sex_reg_mod_output, 
-                                           c("year", "emergency_flag", 
-                                             "incidence_type", "sex"),
-                                           esp2013, n, pop, 0.95) %>% 
+                                               c("year", "emergency_flag", 
+                                                 "incidence_type", "sex"),
+                                               esp2013, n, pop, 0.95) %>% 
   rename_with(~ paste0("obs_", .), c("n", "inc", "l_ci", "u_ci"))
 
 exp_inc_site_sex_output <- calculate_incidence(site_sex_reg_mod_output, 
-                                           c("year", "emergency_flag", 
-                                             "incidence_type", "sex"),
-                                           esp2013, exp, pop, 0.95) %>% 
+                                               c("year", "emergency_flag", 
+                                                 "incidence_type", "sex"),
+                                               esp2013, exp, pop, 0.95) %>% 
   rename_with(~ paste0("exp_", .), c("n", "inc", "l_ci", "u_ci"))
 
 # Join observed and expected together
@@ -210,9 +210,9 @@ inc_site_sex_output <- full_join(obs_inc_site_sex_output,
 # Calculate standardised incidence ratio
 
 inc_site_sex_output_sir <- calculate_ratio(inc_site_sex_output, 
-                                       c("year", "emergency_flag", 
-                                         "incidence_type", "sex"), 
-                                       obs_n, exp_n, 0.95, sir)
+                                           c("year", "emergency_flag", 
+                                             "incidence_type", "sex"), 
+                                           obs_n, exp_n, 0.95, sir)
 
 # Calculate p-values for SIRs
 # This only works for intergers, so use obs_n and exp_n
@@ -325,31 +325,31 @@ simd_reg_mod_output <- inc_rate_simd_data %>%
 # Rename columns to indicate observed or expected
 
 obs_inc_site_simd_output <- calculate_incidence(simd_reg_mod_output, 
-                                               c("year", "emergency_flag", 
-                                                 "incidence_type", 
-                                                 "simd2020v2_sc_quintile"),
-                                               esp2013, n, pop, 0.95) %>% 
+                                                c("year", "emergency_flag", 
+                                                  "incidence_type", 
+                                                  "simd2020v2_sc_quintile"),
+                                                esp2013, n, pop, 0.95) %>% 
   rename_with(~ paste0("obs_", .), c("n", "inc", "l_ci", "u_ci"))
 
 exp_inc_site_simd_output <- calculate_incidence(simd_reg_mod_output, 
-                                               c("year", "emergency_flag", 
-                                                 "incidence_type", 
-                                                 "simd2020v2_sc_quintile"),
-                                               esp2013, exp, pop, 0.95) %>% 
+                                                c("year", "emergency_flag", 
+                                                  "incidence_type", 
+                                                  "simd2020v2_sc_quintile"),
+                                                esp2013, exp, pop, 0.95) %>% 
   rename_with(~ paste0("exp_", .), c("n", "inc", "l_ci", "u_ci"))
 
 # Join observed and expected together
 
 inc_site_simd_output <- full_join(obs_inc_site_simd_output, 
-                                 exp_inc_site_simd_output)
+                                  exp_inc_site_simd_output)
 
 # Calculate standardised incidence ratio
 
 inc_site_simd_output_sir <- calculate_ratio(inc_site_simd_output, 
-                                           c("year", "emergency_flag", 
-                                             "incidence_type", 
-                                             "simd2020v2_sc_quintile"), 
-                                           obs_n, exp_n, 0.95, sir)
+                                            c("year", "emergency_flag", 
+                                              "incidence_type", 
+                                              "simd2020v2_sc_quintile"), 
+                                            obs_n, exp_n, 0.95, sir)
 
 # Calculate p-values for SIRs
 # This only works for intergers, so use obs_n and exp_n
@@ -363,10 +363,10 @@ inc_site_simd_output_sir <- inc_site_simd_output_sir %>%
 # Calculate standardised rate ratio
 
 inc_rate_site_simd_output <- calculate_ratio(inc_site_simd_output_sir, 
-                                            c("year", "emergency_flag", 
-                                              "incidence_type", 
-                                              "simd2020v2_sc_quintile"), 
-                                            obs_inc, exp_inc, 0.95, srr)
+                                             c("year", "emergency_flag", 
+                                               "incidence_type", 
+                                               "simd2020v2_sc_quintile"), 
+                                             obs_inc, exp_inc, 0.95, srr)
 
 # Tidy environment
 
@@ -385,7 +385,7 @@ rm(match_df_simd, simd_reg_mod, simd_reg_mod_without_sex, simd_reg_mod_with_sex,
 # Add axis labels and set y axis to start from 0 and go to specified length
 
 inc_rate_em_plot <- create_chart(inc_rate_site_output, 
-                                        "Emergency", "incidence_type") +
+                                 "Emergency", "incidence_type") +
   scale_colour_manual("Cancer",
                       values = phs_colours(c("phs-purple", "phs-magenta",
                                              "phs-blue", "phs-green", 
@@ -430,7 +430,7 @@ ggsave(here(glue("Charts/{end}/incidence_rate_emergency_line_regression_plot.png
 # Add axis labels and set y axis to start from 0 and go to specified length
 
 inc_rate_el_plot <- create_chart(inc_rate_site_output, 
-                                        "Non-Emergency", "incidence_type") +
+                                 "Non-Emergency", "incidence_type") +
   scale_colour_manual("Cancer",
                       values = phs_colours(c("phs-purple", "phs-magenta",
                                              "phs-blue", "phs-green", 
@@ -515,7 +515,7 @@ ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_plot.png")),
 #                                            "phs-teal")))
 
 inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output, 
-                                            "Non-Emergency", "incidence_type") +
+                                                "Non-Emergency", "incidence_type") +
   scale_colour_manual("Cancer",
                       values = phs_colours(c("phs-purple", "phs-magenta",
                                              "phs-blue", "phs-green", 
@@ -629,7 +629,7 @@ inc_rate_sex_em_plot_reg <- inc_rate_site_sex_output %>%
   ggplot(aes(x = year, group = sex, colour = sex)) +
   geom_line(aes(y = obs_inc, colour = sex), size = 2) + 
   geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
-    geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), width = .1) +
+  geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), width = .1) +
   scale_color_manual("Sex",
                      values = phs_colours(c("phs-green", "phs-blue"))) + 
   facet_wrap(~ incidence_type) + 
@@ -870,7 +870,8 @@ writeData(report_wb, sheet = "SIR Data",
                             exp_n),
                           ~ round_half_up(., 2))) %>%
             mutate(sir_ci = paste0("(", sir_l_ci, ", ", sir_u_ci, ")")) %>% 
-            select(Type = emergency_flag, 
+            select(Year = year, 
+                   Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
                    "Observed Number" = obs_n, 
                    "Expected Number" = exp_n, 
@@ -879,7 +880,7 @@ writeData(report_wb, sheet = "SIR Data",
                    "SIR P Value" = sir_p_value), 
           borders = "all", headerStyle = hs)
 
-setColWidths(report_wb, sheet = "SIR Data", cols = 1:7, widths = "auto")
+setColWidths(report_wb, sheet = "SIR Data", cols = 1:8, widths = "auto")
 
 # Add sheet for Sex Incidence Rates and write inc_rate_site_sex_output data
 # Round relevant columns to two decimal places
@@ -898,7 +899,8 @@ writeData(report_wb, sheet = "SRR Data",
                             exp_n),
                           ~ round_half_up(., 2))) %>%
             mutate(srr_ci = paste0("(", srr_l_ci, ", ", srr_u_ci, ")")) %>% 
-            select(Type = emergency_flag, 
+            select(Year = year, 
+                   Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
                    "Observed Rate" = obs_inc, 
                    "Expected Rate" = exp_inc, 
@@ -906,7 +908,7 @@ writeData(report_wb, sheet = "SRR Data",
                    "SRR CI" = srr_ci), 
           borders = "all", headerStyle = hs, startCol = 1, startRow = 1)
 
-setColWidths(report_wb, sheet = "SRR Data", cols = 1:6, widths = "auto")
+setColWidths(report_wb, sheet = "SRR Data", cols = 1:7, widths = "auto")
 
 
 # Save workbook
