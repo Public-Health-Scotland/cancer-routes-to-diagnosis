@@ -22,7 +22,7 @@ source(here::here("Code/1_housekeeping.R"))
 # Drop rows with blank tnm_stage_2 and define tnm_stage_2 as character
 
 cad <- readRDS(glue("/PHI_conf/CancerGroup1/Topics/CancerStatistics/Data/",
-                     "Registry/CAD/Cancer_Analysis_Database.rds")) %>% 
+                    "Registry/CAD/Cancer_Analysis_Database.rds")) %>% 
   select(tumourid, tnm_stage_2, figo_stage_2, site10) %>% 
   zap_formats() %>%
   zap_widths() %>%
@@ -357,7 +357,7 @@ inc_rate_el_plot <- create_chart(inc_rate_output, "Non-Emergency",
 
 # Save chart
 
-ggsave(here::here("Charts/{end}/incidence_rate_non_emergency_stage_line_plot.png"),
+ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_stage_line_plot.png")),
        plot = inc_rate_el_plot,
        height = 14,
        width = 23,
@@ -510,24 +510,24 @@ writeData(wb, sheet = "Site Incidence Rates",
                             srr, srr_l_ci, srr_u_ci, 
                             exp_n),
                           ~ round_half_up(., 2))) %>%
-          select(Year = year, 
-                 Type = emergency_flag, 
-                 "TNM Stage" = tnm_stage_2, 
-                 "Cancer" = incidence_type, 
-                 "Observed Number" = obs_n, 
-                 "Observed Rate" = obs_inc, 
-                 "Observed L 95 CI" = obs_l_ci, 
-                 "Observed U 95 CI" = obs_u_ci, 
-                 "Expected Number" = exp_n, 
-                 "Expected Rate" = exp_inc, 
-                 "Expected L 95 CI" = exp_l_ci, 
-                 "Expected U 95 CI" = exp_u_ci, 
-                 "SIR" = sir, 
-                 "SIR L 95 CI" = sir_l_ci, 
-                 "SIR U 95 CI" = sir_u_ci, 
-                 "SRR" = srr, 
-                 "SRR L 95 CI" = srr_l_ci, 
-                 "SRR U 95 CI" = srr_u_ci), 
+            select(Year = year, 
+                   Type = emergency_flag, 
+                   "TNM Stage" = tnm_stage_2, 
+                   "Cancer" = incidence_type, 
+                   "Observed Number" = obs_n, 
+                   "Observed Rate" = obs_inc, 
+                   "Observed L 95 CI" = obs_l_ci, 
+                   "Observed U 95 CI" = obs_u_ci, 
+                   "Expected Number" = exp_n, 
+                   "Expected Rate" = exp_inc, 
+                   "Expected L 95 CI" = exp_l_ci, 
+                   "Expected U 95 CI" = exp_u_ci, 
+                   "SIR" = sir, 
+                   "SIR L 95 CI" = sir_l_ci, 
+                   "SIR U 95 CI" = sir_u_ci, 
+                   "SRR" = srr, 
+                   "SRR L 95 CI" = srr_l_ci, 
+                   "SRR U 95 CI" = srr_u_ci), 
           borders = "all", headerStyle = hs, startCol = 1, startRow = 1)
 
 setColWidths(wb, sheet = "Site Incidence Rates", cols = 1:18, widths = "auto")
