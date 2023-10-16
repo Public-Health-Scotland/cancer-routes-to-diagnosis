@@ -2,12 +2,14 @@
 # 1_housekeeping
 # Calum Purdie
 # 03/11/2021
-# Data extraction/preparation
-# Written/run on R Studio Server
-# R version 3.6.1
+# Sets up initial joined SMR01/SMR06 extract for analysis
+# Written/run on Posit Workbench
+# R version 4.1.2
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ### 1 Housekeeping ----
+
+# Load packages
 
 library(odbc)
 library(dplyr)
@@ -36,10 +38,12 @@ channel <- suppressWarnings(dbConnect(
   odbc(),
   dsn = "SMRA",
   uid = .rs.askForPassword("What is your user ID?"),
-  pwd = .rs.askForPassword("What is your LDAP password?")
-))
+  pwd = .rs.askForPassword("What is your LDAP password?")))
 
 # Define dates
+# These are the start and end dates for admissions and cancer diagnoses
+# Admission start date should be at least 30 days before cancer start date to
+# allow for emergencies 30 days before admission to be identified
 
 adm_start <- "2014-12-01"
 adm_end <- "2021-12-31"
@@ -104,10 +108,10 @@ fitted_model_without_sex <- function(df, ...){
   # I tried using nest_by() rather than group_by() and nest() but this didn't
   # work when mapping the model
   
-  new_df <- df %>% 
-    filter(year >= model_start & year <= model_end) %>% 
-    group_by(...) %>%
-    nest() %>%
+  new_df <- df |>  
+    filter(year >= model_start & year <= model_end) |>  
+    group_by(...) |> 
+    nest() |> 
     mutate(mod = map(data, ~ glm(n ~ year + as.factor(age_group) + 
                                    offset(log(pop)), 
                                  data = ., family = poisson(link = "log"))
@@ -124,10 +128,10 @@ fitted_model_with_sex <- function(df, ...){
   # Include year, age_group, sex and offset population within model and use a 
   # poisson regression model
   
-  new_df <- df %>% 
-    filter(year >= model_start & year <= model_end) %>% 
-    group_by(...) %>%
-    nest() %>%
+  new_df <- df |>  
+    filter(year >= model_start & year <= model_end) |>  
+    group_by(...) |> 
+    nest() |> 
     mutate(mod = map(data, ~ glm(n ~ year + as.factor(age_group) + 
                                    as.factor(sex) + offset(log(pop)), 
                                  data = ., family = poisson(link = "log"))
@@ -141,8 +145,26 @@ fitted_model_with_sex <- function(df, ...){
 calculate_incidence <- function(df, grouping_variables, standard_pop,
                                 events, population, confidence_level){
   
-  df_new <- df %>% 
-    group_by(across(all_of(grouping_variables))) %>%
+  # Group across all grouping variables
+  # Calculate the sum of the standard population squared multiplied by number
+  # of events, divided by actual population squared
+  # This gives us the numerator for our square root
+  # Calculate the standard incidence as the sum of the standard population
+  # multiplied by number of events, divided by actual population squared and
+  # then divide this number by the sum of the standard population
+  # Calculate the sum of events and the squared sum of the standard population
+  # Define lower and upper chi-square quantile distributions
+  # Define the lower and upper multiplicands based on their inverse chi-square
+  # divided by 2 minus the sum of events
+  
+  # We can then summarise this data by taking n as the sum of events and inc as 
+  # the standard incidence multiplied by 100,000
+  # We can then derive the lower and upper confidence intervals using the 
+  # standardised incidenc added to the square root value multiplied by the 
+  # multiplicand, which is then multiplied by 100,000
+  
+  df_new <- df |>  
+    group_by(across(all_of(grouping_variables))) |> 
     mutate(ci_sqrt_num = sum(({{standard_pop}} ^ 2 * {{events}})/({{population}} ^ 2)),
            inc_std = sum({{standard_pop}} * {{events}} / {{population}}) / sum({{standard_pop}}),
            sum_events = sum({{events}}),
@@ -153,11 +175,11 @@ calculate_incidence <- function(df, grouping_variables, standard_pop,
            u_ci_inv_chi_sq = qchisq(confidence_level + (1 - confidence_level)/2, 
                                     (2 * sum_events) + 2),
            l_ci_multiplicand = l_ci_inv_chi_sq / 2 - sum_events,
-           u_ci_multiplicand = u_ci_inv_chi_sq / 2 - sum_events) %>%
+           u_ci_multiplicand = u_ci_inv_chi_sq / 2 - sum_events) |> 
     summarise(n = sum({{events}}), 
               inc = inc_std * 100000, 
               l_ci = (inc_std + (ci_sqrt * l_ci_multiplicand)) * 100000,
-              u_ci = (inc_std + (ci_sqrt * u_ci_multiplicand)) * 100000) %>%
+              u_ci = (inc_std + (ci_sqrt * u_ci_multiplicand)) * 100000) |> 
     distinct()
   
 }
@@ -165,21 +187,32 @@ calculate_incidence <- function(df, grouping_variables, standard_pop,
 calculate_ratio <- function(df, grouping_variables, observed, expected, 
                             confidence_level, type){
   
-  df_grouped <- df %>% 
+  # Group across all grouping variables
+  
+  df_grouped <- df |>  
     group_by(across(all_of(grouping_variables)))
+  
+  # Define the ratio name based on the input type
   
   ratio_name <- deparse(substitute(type))
   
+  # Use phe_rate to define the rate ratios
+  # Input the data, observed values, expected values and confidence level
+  # Multiplier can just be 1 here as our data is already per 100,000
+  # Drop unnecessary columns and rename ratios
+  
   ratio_data <- phe_rate(data = df_grouped, x = {{observed}}, n = {{expected}}, 
-                         confidence = confidence_level, multiplier = 1) %>% 
-    select(-c(confidence, statistic, method)) %>% 
+                         confidence = confidence_level, multiplier = 1) |>  
+    select(-c(confidence, statistic, method)) |>  
     rename(ratio = value, 
            ratio_l_ci = lowercl, 
-           ratio_u_ci = uppercl) %>% 
+           ratio_u_ci = uppercl) |>  
     rename_with(~ tolower(gsub("ratio", ratio_name, .x, fixed = TRUE)))
   
-  output <- df_grouped %>% 
-    full_join(ratio_data) %>% 
+  # Define the output by joining the initial grouped data with the ratio data
+  
+  output <- df_grouped |>  
+    full_join(ratio_data) |>  
     ungroup()
   
 }
@@ -195,11 +228,11 @@ create_chart <- function(df, presentation_type, line_data){
   # Add theme details to adjust text - this will make the chart look odd here
   # but looks fine once saved out
   
-  df %>% 
-    filter(emergency_flag == presentation_type) %>% 
+  df |>  
+    filter(emergency_flag == presentation_type) |>  
     mutate(year = as.character(year), 
            !!as.name(line_data) := fct_reorder(!!as.name(line_data), obs_inc, 
-                                               tail, n = 1, .desc = TRUE)) %>%       
+                                               tail, n = 1, .desc = TRUE)) |>        
     ggplot(aes(x = year, y = obs_inc, group = !!as.name(line_data))) +
     geom_line(aes(colour = !!as.name(line_data)), size = 2) + 
     geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), 
@@ -226,37 +259,29 @@ create_regression_chart <- function(df, presentation_type, line_data){
   # Add theme details to adjust text - this will make the chart look odd here
   # but looks fine once saved out
   
-  df %>% 
-    filter(emergency_flag == presentation_type) %>% 
+  df |>  
+    filter(emergency_flag == presentation_type) |>  
     mutate(year = as.character(year), 
            !!as.name(line_data) := fct_reorder(!!as.name(line_data), obs_inc, 
-                                               tail, n = 1, .desc = TRUE)) %>%    
+                                               tail, n = 1, .desc = TRUE)) |>     
     ggplot(aes(x = year, group = !!as.name(line_data), 
                colour = !!as.name(line_data))) +
     geom_line(aes(y = obs_inc, colour = !!as.name(line_data)), size = 2) + 
     geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
     geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), 
                   width = .1) +
-    # theme(plot.title = element_text(hjust = 0.5, size = 40),
-    #       axis.text.x = element_text(vjust = 0.5, size = 30),
-    #       axis.text.y = element_text(size = 30),
-    #       axis.title = element_text(size = 35),
-    #       legend.title = element_text(size = 30),
-    #       legend.key.size = unit(1.5, "cm"),
-    #       legend.text = element_text(size = 30))
     theme(plot.title = element_text(hjust = 0.5, size = 40),
           axis.text.x = element_text(vjust = 0.5, size = 30),
           axis.text.y = element_text(size = 30),
           axis.title = element_text(size = 35),
           legend.title = element_text(size = 30),
           legend.key.size = unit(1.5, "cm"), 
-          legend.text = element_text(size = 30)
-          #legend.position = "none"
-          )
+          legend.text = element_text(size = 30))
   
 }
 
-# Wilson CIs
+# Define functions for Wilson confidence intervals
+# These are used for the simple proportion calculations
 
 Wilson_lowerCI <- function(kpi_p, alpha, n){
   ((kpi_p + qchisq((1 - alpha), df = 1) / (2 * n) 
@@ -277,6 +302,7 @@ Wilson_upperCI <- function(kpi_p, alpha, n){
 ### 3 Data Extraction ----
 
 # Create SMR06 query
+# This selects relevant variables from SMR06 between the specified cancer dates
 
 smr06_query <-
   paste(
@@ -291,14 +317,12 @@ smr06_query <-
 # Extract data from SMR06 using above query
 # Clean names and remove records with blank upi_number
 # Create 3 character cancer_site code based on icd10s_cancer_site
-# Define incidence type and format date and calculate incidence year
-# Remove men with breast cancer and women with prostate cancer
+# Define incidence type, format date and calculate incidence year
+# Remove men with breast or cervical cancer and women with prostate cancer
 
-smr06_data <- as_tibble(dbGetQuery(channel, statement = smr06_query)) %>%
-  clean_names() %>%
-  filter(!is.na(upi_number)) %>% 
-  # mutate(incidence_month = month(incidence_date)) %>% 
-  # filter(incidence_month %in% c(3:12)) %>%
+smr06_data <- as_tibble(dbGetQuery(channel, statement = smr06_query)) |> 
+  clean_names() |> 
+  filter(!is.na(upi_number)) |>  
   mutate(cancer_site = substr(icd10s_cancer_site, 1, 3), 
          incidence_type = case_when(cancer_site %in% c("C18", "C19", "C20") ~ 
                                       "Colorectal", 
@@ -315,22 +339,20 @@ smr06_data <- as_tibble(dbGetQuery(channel, statement = smr06_query)) %>%
                                     cancer_site %in% c("C53") ~ "Cervical", 
                                     cancer_site %in% c("C15", "C16", "C17", 
                                                        "C22", "C23", "C24", 
-                                                       "C25",
-                                                       # GC - added C26, after 
-                                                       # emailing Lesley
-                                                       "C26") ~ "Upper GI"),
+                                                       "C25", "C26") ~ "Upper GI"),
          old_incidence_date = as.Date(incidence_date),
          encr_incidence_date = as.Date(encr_incidence_date),
          incidence_date = case_when(old_incidence_date < "2019-01-01" ~ old_incidence_date,
                                     encr_incidence_date >= "2019-01-01" ~ encr_incidence_date
-         )) %>% 
-  mutate(incidence_year = year(incidence_date)) %>% 
-  filter(between(incidence_year, as.numeric(start), as.numeric(end))) %>% 
+         )) |>  
+  mutate(incidence_year = year(incidence_date)) |>  
+  filter(between(incidence_year, as.numeric(start), as.numeric(end))) |>  
   filter(!(incidence_type == "Breast" & sex == "1") & 
          !(incidence_type == "Prostate" & sex == "2") & 
          !(incidence_type == "Cervical" & sex == "1"))
 
 # Create SMR01 query for emergency admissions
+# This selects variables from SMR01 between the specified admission dates
 
 query_admissions <-
   paste(
@@ -348,9 +370,9 @@ query_admissions <-
 # Clean names and filter for UPIs in SMR06 extract
 # Define emergency and elective admissions
 
-smr01_adm <- as_tibble(dbGetQuery(channel, statement = query_admissions)) %>%
-  clean_names() %>% 
-  filter(upi_number %in% smr06_data$upi_number) %>% 
+smr01_adm <- as_tibble(dbGetQuery(channel, statement = query_admissions)) |> 
+  clean_names() |>  
+  filter(upi_number %in% smr06_data$upi_number) |>  
   mutate(admission = case_when(admission_type %in% c("20", "21", "22", "30", 
                                                      "31", "32", "33", "34", 
                                                      "35", "36", "38", 
@@ -358,12 +380,17 @@ smr01_adm <- as_tibble(dbGetQuery(channel, statement = query_admissions)) %>%
                                admission_type %in% c("10", "11", "12", "18", 
                                                      "19") ~ "elective"))
 
+# Free unused memory
+
+gc()
+
 # Read in postcode simd lookup file
+# Select columns and recode lower and upper quintile values
 
 pc_simd <- readRDS(glue("/conf/linkage/output/lookups/Unicode/Deprivation/", 
-                        "postcode_2022_2_simd2020v2.rds")) %>% 
-  select(postcode = pc7, simd2020v2_sc_quintile) %>% 
-  mutate(simd2020v2_sc_quintile = as.character(simd2020v2_sc_quintile)) %>% 
+                        "postcode_2023_2_simd2020v2.rds")) |>  
+  select(postcode = pc7, simd2020v2_sc_quintile) |>  
+  mutate(simd2020v2_sc_quintile = as.character(simd2020v2_sc_quintile)) |>  
   mutate(simd2020v2_sc_quintile = recode(simd2020v2_sc_quintile, 
                                          "1" = "1 (most deprived)", 
                                          "5" = "5 (least deprived)"))
@@ -379,17 +406,17 @@ pc_simd <- readRDS(glue("/conf/linkage/output/lookups/Unicode/Deprivation/",
 
 simd_pop <- readRDS(glue("/conf/linkage/output/lookups/Unicode/Populations/", 
                          "Estimates/", 
-                         "DataZone2011_pop_est_5year_agegroups_2011_2021.rds")) %>%
+                         "DataZone2011_pop_est_5year_agegroups_2011_2021.rds")) |> 
   select(year, datazone2011, sex, starts_with("ageg"), 
-         simd2020v2_sc_quintile) %>% 
-  group_by(year, sex, simd2020v2_sc_quintile) %>% 
-  summarise(across(starts_with("ageg"), ~sum(.x))) %>%
-  filter(between(year, as.numeric(start), as.numeric(end))) %>% 
+         simd2020v2_sc_quintile) |>  
+  group_by(year, sex, simd2020v2_sc_quintile) |>  
+  summarise(across(starts_with("ageg"), ~sum(.x))) |> 
+  filter(between(year, as.numeric(start), as.numeric(end))) |>  
   pivot_longer(cols = starts_with("ageg"), names_to = "age_group", 
-               values_to = "pop") %>% 
-  group_by(year, sex, simd2020v2_sc_quintile) %>% 
-  mutate(age_group = row_number() - 1) %>% 
-  ungroup() %>% 
+               values_to = "pop") |>  
+  group_by(year, sex, simd2020v2_sc_quintile) |>  
+  mutate(age_group = row_number() - 1) |>  
+  ungroup() |>  
   mutate(sex = case_when(sex %in% c("m", "M") ~ "1", 
                          sex %in% c("f", "F") ~ "2"), 
          simd2020v2_sc_quintile = recode(as.character(simd2020v2_sc_quintile), 
@@ -399,21 +426,21 @@ simd_pop <- readRDS(glue("/conf/linkage/output/lookups/Unicode/Populations/",
 # Calculate the Scotland level population
 # Group by year, sex and age_group and summarise pop within each group
 
-scot_pop <- simd_pop %>% 
-  group_by(year, sex, age_group) %>%
+scot_pop <- simd_pop |>  
+  group_by(year, sex, age_group) |> 
   summarise(pop = sum(pop))
 
 # Read in European standard populations by sex and drop SPSS formatting
 # Align age group numbering with other data and select columns required
 
 esp2013 <- read_sav(glue("/conf/linkage/output/lookups/Unicode/Populations/", 
-                         "Standard/ESP2013_by_sex.sav")) %>%
-  zap_formats() %>%
-  zap_widths() %>%
-  remove_all_labels() %>% 
-  clean_names() %>%
+                         "Standard/ESP2013_by_sex.sav")) |> 
+  zap_formats() |> 
+  zap_widths() |> 
+  remove_all_labels() |>  
+  clean_names() |> 
   mutate(age_group = agegroup - 1, 
-         sex = as.character(sex)) %>%
+         sex = as.character(sex)) |> 
   select(sex, age_group, esp2013)
 
 
@@ -421,16 +448,16 @@ esp2013 <- read_sav(glue("/conf/linkage/output/lookups/Unicode/Populations/",
 ### 4 Data Manipulation ----
 
 # Join data and calculate time between admission and incidence
-# Join on SIMD data and urban rural data
+# Join on SIMD data
 # Define age groups and sex name
 
-joined_data <- smr06_data %>% 
-  left_join(smr01_adm) %>% 
-  mutate(time_diff = time_length(admission_date %--% incidence_date, "days")) %>% 
-  left_join(pc_simd) %>% 
-  mutate(age_group = create_age_groups(age_in_years, 0, 90, 5)) %>% 
+joined_data <- smr06_data |>  
+  left_join(smr01_adm) |>  
+  mutate(time_diff = time_length(admission_date %--% incidence_date, "days")) |>  
+  left_join(pc_simd) |>  
+  mutate(age_group = create_age_groups(age_in_years, 0, 90, 5)) |>  
   mutate(age_group = if_else(age_in_years >= 0 & age_in_years <= 39, 
-                             "0-39", age_group)) %>% 
+                             "0-39", age_group)) |>  
   mutate(sex_name = recode(sex, "1" = "Male", "2" = "Female"))
 
 # Arrange data by upi, admission date and admission type
@@ -443,11 +470,11 @@ joined_data <- smr06_data %>%
 # This is any case where the first admission type is emergency and the admission
 # is within 30 days, or any emergency admission within 30 days
 
-joined_data <- joined_data %>% 
-  arrange(upi_number, admission_date, desc(admission)) %>% 
-  group_by(upi_number, cis_marker) %>% 
-  mutate(first_admission_type = first(admission)) %>% 
-  ungroup() %>% 
+joined_data <- joined_data |>  
+  arrange(upi_number, admission_date, desc(admission)) |>  
+  group_by(upi_number, cis_marker) |>  
+  mutate(first_admission_type = first(admission)) |>  
+  ungroup() |>  
   mutate(emergency_flag = case_when(time_diff >= 0 & time_diff <= 30
                                     & first_admission_type == "emergency" ~ "Emergency",
                                     time_diff >= 0 & time_diff <= 30 & 
@@ -461,12 +488,15 @@ joined_data <- joined_data %>%
 # Group data by tumour_no and take first row for each
 # This means we only keep one row per person and cancer
 
-joined_data <- joined_data %>% 
-  arrange(tumour_no, upi_number, emergency_flag, desc(admission), incidence_date) %>% 
-  group_by(tumour_no) %>% 
-  slice(1) %>% 
+joined_data <- joined_data |>  
+  arrange(tumour_no, upi_number, emergency_flag, desc(admission), incidence_date) |>  
+  group_by(tumour_no) |>  
+  slice(1) |>  
   ungroup()
 
 # Tidy environment
 
 rm(smr01_adm, smr06_data, pc_simd)
+gc()
+
+# saveRDS(joined_data, "Temp/20230923_data.rds")

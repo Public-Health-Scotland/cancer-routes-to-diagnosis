@@ -2,9 +2,9 @@
 # 4_method_1st_detection
 # Calum Purdie
 # 11/05/2022
-# Data extraction/preparation
-# Written/run on R Studio Server
-# R version 3.6.1
+# Calculates standardised incidence rates and ratios by method of 1st detection
+# Written/run on Posit Workbench
+# R version 4.1.2
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -19,7 +19,7 @@ source(here::here("Code/1_housekeeping.R"))
 
 # Recode method_1st_detection to add descriptions
 
-joined_data <- joined_data %>% 
+joined_data <- joined_data |>
   mutate(method_1st_detection = case_when(
     method_1st_detection == 1 ~ "1 (Screening Examination)", 
     method_1st_detection == 2 ~ "2 (Incidental Finding)", 
@@ -37,11 +37,11 @@ joined_data <- joined_data %>%
 # Pivot data wider, taking new names from incidence_year and values from n
 # Select columns
 
-method_1st_detection_n <- joined_data %>% 
-  count(incidence_year, emergency_flag, method_1st_detection) %>% 
+method_1st_detection_n <- joined_data |> 
+  count(incidence_year, emergency_flag, method_1st_detection) |>
   complete(method_1st_detection, nesting(incidence_year, emergency_flag), 
-           fill = list(n = 0)) %>% 
-  pivot_wider(names_from = incidence_year, values_from = n) %>% 
+           fill = list(n = 0)) |>
+  pivot_wider(names_from = incidence_year, values_from = n) |>
   select("Presentation" = emergency_flag, 
          "Method 1st Detection" = method_1st_detection, 
          everything())
@@ -54,15 +54,15 @@ method_1st_detection_n <- joined_data %>%
 # Pivot data wider, taking new names from incidence_year and values from pc
 # Select columns
 
-method_1st_detection_pc <- joined_data %>% 
-  count(incidence_year, emergency_flag, method_1st_detection) %>% 
+method_1st_detection_pc <- joined_data |>
+  count(incidence_year, emergency_flag, method_1st_detection) |>
   complete(method_1st_detection, nesting(incidence_year, emergency_flag), 
-           fill = list(n = 0)) %>% 
-  group_by(incidence_year, emergency_flag) %>% 
-  mutate(pc = round_half_up(n * 100 / sum(n), 1)) %>% 
-  ungroup() %>% 
-  select(-n) %>% 
-  pivot_wider(names_from = incidence_year, values_from = pc) %>% 
+           fill = list(n = 0)) |>
+  group_by(incidence_year, emergency_flag) |>
+  mutate(pc = round_half_up(n * 100 / sum(n), 1)) |>
+  ungroup() |>
+  select(-n) |>
+  pivot_wider(names_from = incidence_year, values_from = pc) |>
   select("Presentation" = emergency_flag, 
          "Method 1st Detection" = method_1st_detection, 
          everything())
@@ -73,8 +73,8 @@ method_1st_detection_pc <- joined_data %>%
 
 # Get a list of all cancer types in analysis
 
-method <- joined_data %>% 
-  distinct(method_1st_detection) %>% 
+method <- joined_data |>
+  distinct(method_1st_detection) |>
   pull()
 
 # Create a data frame for matching to joined_data
@@ -96,14 +96,14 @@ match_df_site <- expand.grid(year = c(start:end), sex = c("1", "2"),
 # admissions for these groups to 0, as they appear as NAs when joined on
 # Join on Scotland populations and also ESP and arrange data
 
-inc_rate_m1d_data <- joined_data %>% 
-  mutate(age_group = standard_pop_age_groups(age_in_years)) %>% 
+inc_rate_m1d_data <- joined_data |>
+  mutate(age_group = standard_pop_age_groups(age_in_years)) |>
   count(year = incidence_year, sex, age_group, emergency_flag, 
-        method_1st_detection) %>% 
-  full_join(match_df_site) %>% 
-  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) %>% 
-  left_join(scot_pop) %>% 
-  left_join(esp2013) %>% 
+        method_1st_detection) |>
+  full_join(match_df_site) |>
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) |>
+  left_join(scot_pop) |>
+  left_join(esp2013) |>
   arrange(year, sex, age_group, emergency_flag, method_1st_detection)
 
 # Define fitted model for all cancers
@@ -111,7 +111,7 @@ inc_rate_m1d_data <- joined_data %>%
 # Drop data column
 
 m1d_reg_mod <- fitted_model_with_sex(inc_rate_m1d_data, emergency_flag, 
-                                     method_1st_detection) %>% 
+                                     method_1st_detection) |>
   select(-data)
 
 # Group by emergency_flag and method_1st_detection and nest data
@@ -120,11 +120,11 @@ m1d_reg_mod <- fitted_model_with_sex(inc_rate_m1d_data, emergency_flag,
 # using the data from the data column
 # Unnest data to get data back into standard format
 
-m1d_reg_mod_output <- inc_rate_m1d_data %>% 
+m1d_reg_mod_output <- inc_rate_m1d_data |>
   group_by(emergency_flag, method_1st_detection) %>%
-  nest() %>% 
-  inner_join(m1d_reg_mod) %>% 
-  mutate(exp = purrr::map2(mod, data, predict, type = "response")) %>% 
+  nest() |>
+  inner_join(m1d_reg_mod) |>
+  mutate(exp = purrr::map2(mod, data, predict, type = "response")) |>
   unnest(c(data, exp))
 
 # Calculate incidence rates by year, emergency_flag and method_1st_detection for
@@ -134,13 +134,13 @@ m1d_reg_mod_output <- inc_rate_m1d_data %>%
 obs_inc_m1d_output <- calculate_incidence(m1d_reg_mod_output, 
                                            c("year", "emergency_flag", 
                                              "method_1st_detection"),
-                                           esp2013, n, pop, 0.95) %>% 
+                                           esp2013, n, pop, 0.95) |>
   rename_with(~ paste0("obs_", .), c("n", "inc", "l_ci", "u_ci"))
 
 exp_inc_m1d_output <- calculate_incidence(m1d_reg_mod_output, 
                                            c("year", "emergency_flag", 
                                              "method_1st_detection"),
-                                           esp2013, exp, pop, 0.95) %>% 
+                                           esp2013, exp, pop, 0.95) |>
   rename_with(~ paste0("exp_", .), c("n", "inc", "l_ci", "u_ci"))
 
 # Join observed and expected together
@@ -294,7 +294,7 @@ setColWidths(wb_m1d, sheet = "Method 1st Detection", cols = 2:8, widths = "auto"
 addWorksheet(wb_m1d, "Incidence Rates", gridLines = FALSE)
 
 writeData(wb_m1d, sheet = "Incidence Rates", 
-          inc_rate_m1d_output %>% 
+          inc_rate_m1d_output |>
             mutate(across(c(obs_inc, obs_l_ci, obs_u_ci, 
                             exp_inc, exp_l_ci, exp_u_ci, 
                             sir, sir_l_ci, sir_u_ci, 
