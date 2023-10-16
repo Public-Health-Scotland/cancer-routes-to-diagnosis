@@ -2,16 +2,16 @@
 # 2_site_analysis
 # Calum Purdie
 # 03/11/2021
-# Data extraction/preparation
-# Written/run on R Studio Server
-# R version 3.6.1
+# Calculates totals and proportions by cancer site
+# Written/run on Posit Workbench
+# R version 4.1.2
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
 ### 1 Housekeeping ----
 
-source(here::here("Code/1_housekeeping.R")) 
+source(here::here("Code/1_housekeeping.R"))
 
 
 
@@ -19,13 +19,13 @@ source(here::here("Code/1_housekeeping.R"))
 
 # Count by incidence_year, incidence_type and cancer_site to get total cancers
 
-site_totals <- joined_data %>% 
+site_totals <- joined_data |>   
   count(incidence_year, incidence_type, name = "Cancers")
 
 # Count by incidence_year, incidence_type and emergency_flag to get total 
 # presentations
 
-site_admissions <- joined_data %>% 
+site_admissions <- joined_data |> 
   count(incidence_year, incidence_type, emergency_flag, 
         name = "Presentations")
 
@@ -36,14 +36,14 @@ site_admissions <- joined_data %>%
 # multiply by 100 to get percentages
 # Arrange data and select columns
 
-site_output <- full_join(site_totals, site_admissions) %>% 
-  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) %>% 
+site_output <- full_join(site_totals, site_admissions) |> 
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) |> 
   mutate(PC_Presentations = Presentations / Cancers,
          Lower_95_CI = Wilson_lowerCI(PC_Presentations, 0.05, Cancers), 
-         Upper_95_CI = Wilson_upperCI(PC_Presentations, 0.05, Cancers)) %>% 
+         Upper_95_CI = Wilson_upperCI(PC_Presentations, 0.05, Cancers)) |> 
   mutate(across(c(PC_Presentations, Lower_95_CI, Upper_95_CI), 
-                ~ round_half_up(.x * 100, 1))) %>% 
-  arrange(incidence_type, incidence_year) %>% 
+                ~ round_half_up(.x * 100, 1))) |> 
+  arrange(incidence_type, incidence_year) |> 
   select(incidence_year, incidence_type, emergency_flag, Cancers, Presentations, 
          PC_Presentations, Lower_95_CI, Upper_95_CI)
 
@@ -53,13 +53,13 @@ site_output <- full_join(site_totals, site_admissions) %>%
 # Round PC_Presentations, Lower_95_CI and Upper_95_CI to 1 decimal place and 
 # multiply by 100 to get percentages
 
-scotland_output <- site_output %>% 
-  group_by(incidence_year, emergency_flag) %>% 
+scotland_output <- site_output |> 
+  group_by(incidence_year, emergency_flag) |> 
   summarise(Cancers = sum(Cancers), 
-            Presentations = sum(Presentations)) %>% 
+            Presentations = sum(Presentations)) |> 
   mutate(PC_Presentations = Presentations / Cancers,
          Lower_95_CI = Wilson_lowerCI(PC_Presentations, 0.05, Cancers), 
-         Upper_95_CI = Wilson_upperCI(PC_Presentations, 0.05, Cancers)) %>% 
+         Upper_95_CI = Wilson_upperCI(PC_Presentations, 0.05, Cancers)) |> 
   mutate(across(c(PC_Presentations, Lower_95_CI, Upper_95_CI), 
                 ~ round_half_up(.x * 100, 1)))
 
@@ -76,10 +76,10 @@ scotland_output <- site_output %>%
 # Add theme details to adjust text - this will make the chart look odd in R but
 # looks fine once saved out
 
-n_cancers_em_plot <- site_output %>% 
-  filter(emergency_flag == "Emergency") %>% 
-  select(incidence_year, incidence_type, Presentations) %>% 
-  mutate(incidence_year = as.character(incidence_year)) %>% 
+n_cancers_em_plot <- site_output |> 
+  filter(emergency_flag == "Emergency") |> 
+  select(incidence_year, incidence_type, Presentations) |> 
+  mutate(incidence_year = as.character(incidence_year)) |> 
   ggplot(aes(x = incidence_year, y = Presentations, group = incidence_type)) +
   geom_line(aes(colour = incidence_type), size = 2) + 
   scale_colour_manual("Cancer",
@@ -115,10 +115,10 @@ ggsave(here(glue("Charts/{end}/number_cancers_emergency_line_plot.png")),
 # Add theme details to adjust text - this will make the chart look odd in R but
 # looks fine once saved out
 
-n_cancers_el_plot <- site_output %>% 
-  filter(emergency_flag == "Non-Emergency") %>% 
-  select(incidence_year, incidence_type, Presentations) %>% 
-  mutate(incidence_year = as.character(incidence_year)) %>% 
+n_cancers_el_plot <- site_output |> 
+  filter(emergency_flag == "Non-Emergency") |> 
+  select(incidence_year, incidence_type, Presentations) |> 
+  mutate(incidence_year = as.character(incidence_year)) |> 
   ggplot(aes(x = incidence_year, y = Presentations, group = incidence_type)) +
   geom_line(aes(colour = incidence_type), size = 2) + 
   scale_colour_manual("Cancer",
@@ -153,8 +153,8 @@ ggsave(here(glue("Charts/{end}/number_cancers_non_emergency_line_plot.png")),
 # Add theme details to adjust text - this will make the chart look odd in R but
 # looks fine once saved out
 
-pc_cancers_scotland_plot <- scotland_output %>% 
-  mutate(incidence_year = as.character(incidence_year)) %>% 
+pc_cancers_scotland_plot <- scotland_output |> 
+  mutate(incidence_year = as.character(incidence_year)) |> 
   ggplot(aes(x = incidence_year, y = PC_Presentations, fill = emergency_flag)) +
   geom_bar(position = position_dodge(), stat = "identity") +
   geom_errorbar(aes(ymin = Lower_95_CI, ymax = Upper_95_CI),
@@ -202,7 +202,7 @@ hs <- createStyle(fontColour = "#ffffff", fgFill = "#0078D4",
 addWorksheet(wb, "Scotland Data", gridLines = FALSE)
 
 writeData(wb, sheet = "Scotland Data", 
-          scotland_output %>% 
+          scotland_output |> 
             select(Year = incidence_year, 
                    "Presentation Type" = emergency_flag, 
                    Cancers, 
@@ -221,7 +221,7 @@ setColWidths(wb, sheet = "Scotland Data", cols = 1:7, widths = "auto")
 addWorksheet(wb, "Site Totals", gridLines = FALSE)
 
 writeData(wb, sheet = "Site Totals", 
-          site_output %>% 
+          site_output |> 
             select(Year = incidence_year, 
                    Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 

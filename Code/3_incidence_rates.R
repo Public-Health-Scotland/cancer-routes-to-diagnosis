@@ -2,9 +2,9 @@
 # 3_incidence_rates
 # Calum Purdie
 # 03/11/2021
-# Data extraction/preparation
-# Written/run on R Studio Server
-# R version 3.6.1
+# Calculates standardised incidence rates and ratios by cancer site
+# Written/run on Posit Workbench
+# R version 4.1.2
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -21,8 +21,8 @@ source(here::here("Code/1_housekeeping.R"))
 
 # Get a list of all cancer types in analysis
 
-cancer_types <- joined_data %>% 
-  distinct(incidence_type) %>% 
+cancer_types <- joined_data |> 
+  distinct(incidence_type) |> 
   pull()
 
 # Create a data frame for matching to joined_data
@@ -36,7 +36,7 @@ cancer_types <- joined_data %>%
 match_df_site <- expand.grid(year = c(start:end), sex = c("1", "2"), 
                              age_group = c(0:18), 
                              emergency_flag = c("Non-Emergency", "Emergency"), 
-                             incidence_type = c(cancer_types)) %>% 
+                             incidence_type = c(cancer_types)) |> 
   filter(!(incidence_type == "Breast" & sex == "1") & 
            !(incidence_type == "Prostate" & sex == "2") & 
            !(incidence_type == "Cervical" & sex == "1"))
@@ -48,28 +48,20 @@ match_df_site <- expand.grid(year = c(start:end), sex = c("1", "2"),
 # admissions for these groups to 0, as they appear as NAs when joined on
 # Join on Scotland populations and also ESP and then arrange data
 
-inc_rate_site_data <- joined_data %>% 
-  mutate(age_group = standard_pop_age_groups(age_in_years)) %>% 
-  count(year = incidence_year, sex, age_group, emergency_flag, incidence_type) %>% 
-  full_join(match_df_site) %>%
-  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) %>% 
-  left_join(scot_pop) %>% 
-  left_join(esp2013) %>% 
+inc_rate_site_data <- joined_data |> 
+  mutate(age_group = standard_pop_age_groups(age_in_years)) |> 
+  count(year = incidence_year, sex, age_group, emergency_flag, incidence_type) |> 
+  full_join(match_df_site) |>
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) |> 
+  left_join(scot_pop) |> 
+  left_join(esp2013) |> 
   arrange(year, sex, age_group, incidence_type, emergency_flag)
-
-# inc_rate_site_data <- inc_rate_site_data %>% 
-#   mutate(age_group = case_when(age_group >= 0 & age_group <= 6 ~ 6, 
-#                                TRUE ~ age_group)) %>% 
-#   group_by(year, sex, age_group, emergency_flag, incidence_type) %>% 
-#   summarise(n = sum(n), 
-#             pop = sum(pop), 
-#             esp2013 = sum(esp2013))
 
 # Define fitted model for breast, cervical and prostate cancers
 # Group data by emergency_flag and incidence_type
 
 site_reg_mod_without_sex <- fitted_model_without_sex(
-  inc_rate_site_data %>% 
+  inc_rate_site_data |> 
     filter(incidence_type %in% c("Breast", "Cervical", "Prostate")), 
   emergency_flag, incidence_type)
 
@@ -77,14 +69,14 @@ site_reg_mod_without_sex <- fitted_model_without_sex(
 # Group data by emergency_flag and incidence_type
 
 site_reg_mod_with_sex <- fitted_model_with_sex(
-  inc_rate_site_data %>% 
+  inc_rate_site_data |> 
     filter(incidence_type %in% c("Colorectal", "Head and Neck", "Lung", 
                                  "Upper GI")), 
   emergency_flag, incidence_type)
 
 # Bind site_reg_mod_one_sex and site_reg_mod_two_sex and drop data column
 
-site_reg_mod <- bind_rows(site_reg_mod_without_sex, site_reg_mod_with_sex) %>% 
+site_reg_mod <- bind_rows(site_reg_mod_without_sex, site_reg_mod_with_sex) |> 
   select(-data)
 
 # Group by emergency_flag and incidence_type and nest data
@@ -93,22 +85,22 @@ site_reg_mod <- bind_rows(site_reg_mod_without_sex, site_reg_mod_with_sex) %>%
 # using the data from the data column
 # Unnest data to get data back into standard format
 
-site_reg_mod_output <- inc_rate_site_data %>% 
-  group_by(emergency_flag, incidence_type) %>%
-  nest() %>% 
-  inner_join(site_reg_mod) %>% 
-  mutate(exp = purrr::map2(mod, data, predict, type = "response")) %>% 
+site_reg_mod_output <- inc_rate_site_data |> 
+  group_by(emergency_flag, incidence_type) |>
+  nest() |> 
+  inner_join(site_reg_mod) |> 
+  mutate(exp = purrr::map2(mod, data, predict, type = "response")) |> 
   unnest(c(data, exp))
 
 # Calculate goodness of fit for Poisson regression models
 # Calculate the squared sum of residuals using the Pearson method
 # Use sum_res in pchisq with the residuals from the model as degrees of freedom
 
-goodness_of_fit <- site_reg_mod_output %>% 
+goodness_of_fit <- site_reg_mod_output |> 
   mutate(sum_res = sum(residuals(mod[[1]], type="pearson")^2), 
          p_chisq = pchisq(sum_res, mod[[1]]$df.residual, lower.tail = FALSE))
 
-goodness_of_fit %>% count(emergency_flag, incidence_type, sum_res, p_chisq)
+goodness_of_fit |> count(emergency_flag, incidence_type, sum_res, p_chisq)
 
 # Calculate incidence rates by year, emergency_flag and incidence_type for
 # observed and expected values
@@ -117,13 +109,13 @@ goodness_of_fit %>% count(emergency_flag, incidence_type, sum_res, p_chisq)
 obs_inc_site_output <- calculate_incidence(site_reg_mod_output, 
                                            c("year", "emergency_flag", 
                                              "incidence_type"),
-                                           esp2013, n, pop, 0.95) %>% 
+                                           esp2013, n, pop, 0.95) |> 
   rename_with(~ paste0("obs_", .), c("n", "inc", "l_ci", "u_ci"))
 
 exp_inc_site_output <- calculate_incidence(site_reg_mod_output, 
                                            c("year", "emergency_flag", 
                                              "incidence_type"),
-                                           esp2013, exp, pop, 0.95) %>% 
+                                           esp2013, exp, pop, 0.95) |> 
   rename_with(~ paste0("exp_", .), c("n", "inc", "l_ci", "u_ci"))
 
 # Join observed and expected together
@@ -140,7 +132,7 @@ inc_site_output_sir <- calculate_ratio(inc_site_output,
 # Calculate p-values for SIRs
 # This only works for intergers, so use obs_n and exp_n
 
-inc_site_output_sir <- inc_site_output_sir %>% 
+inc_site_output_sir <- inc_site_output_sir |> 
   mutate(sir_p_value = map2_dbl(obs_n, exp_n, ~ 
                                   poisson.test(x = .x, `T` = .y, 
                                                alternative = "t", 
@@ -152,8 +144,6 @@ inc_rate_site_output <- calculate_ratio(inc_site_output_sir,
                                         c("year", "emergency_flag", 
                                           "incidence_type"), 
                                         obs_inc, exp_inc, 0.95, srr)
-
-
 
 # Tidy environment
 
@@ -170,7 +160,7 @@ rm(site_reg_mod_without_sex, site_reg_mod_with_sex, site_reg_mod,
 
 site_sex_reg_mod <- fitted_model_without_sex(inc_rate_site_data,
                                              emergency_flag, incidence_type, 
-                                             sex) %>% 
+                                             sex) |> 
   select(-data)
 
 # Group by emergency_flag, incidence_type and sex and nest data
@@ -179,11 +169,11 @@ site_sex_reg_mod <- fitted_model_without_sex(inc_rate_site_data,
 # using the data from the data column
 # Unnest data to get data back into standard format
 
-site_sex_reg_mod_output <- inc_rate_site_data %>% 
-  group_by(emergency_flag, incidence_type, sex) %>%
-  nest() %>% 
-  inner_join(site_sex_reg_mod) %>% 
-  mutate(exp = purrr::map2(mod, data, predict, type = "response")) %>% 
+site_sex_reg_mod_output <- inc_rate_site_data |> 
+  group_by(emergency_flag, incidence_type, sex) |>
+  nest() |> 
+  inner_join(site_sex_reg_mod) |> 
+  mutate(exp = purrr::map2(mod, data, predict, type = "response")) |> 
   unnest(c(data, exp))
 
 # Calculate incidence rates by year, emergency_flag, incidence_type and sex for
@@ -193,13 +183,13 @@ site_sex_reg_mod_output <- inc_rate_site_data %>%
 obs_inc_site_sex_output <- calculate_incidence(site_sex_reg_mod_output, 
                                                c("year", "emergency_flag", 
                                                  "incidence_type", "sex"),
-                                               esp2013, n, pop, 0.95) %>% 
+                                               esp2013, n, pop, 0.95) |> 
   rename_with(~ paste0("obs_", .), c("n", "inc", "l_ci", "u_ci"))
 
 exp_inc_site_sex_output <- calculate_incidence(site_sex_reg_mod_output, 
                                                c("year", "emergency_flag", 
                                                  "incidence_type", "sex"),
-                                               esp2013, exp, pop, 0.95) %>% 
+                                               esp2013, exp, pop, 0.95) |> 
   rename_with(~ paste0("exp_", .), c("n", "inc", "l_ci", "u_ci"))
 
 # Join observed and expected together
@@ -217,7 +207,7 @@ inc_site_sex_output_sir <- calculate_ratio(inc_site_sex_output,
 # Calculate p-values for SIRs
 # This only works for intergers, so use obs_n and exp_n
 
-inc_site_sex_output_sir <- inc_site_sex_output_sir %>% 
+inc_site_sex_output_sir <- inc_site_sex_output_sir |> 
   mutate(sir_p_value = map2_dbl(obs_n, exp_n, ~ 
                                   poisson.test(x = .x, `T` = .y, 
                                                alternative = "t", 
@@ -242,9 +232,9 @@ rm(match_df_site, inc_rate_site_data, site_sex_reg_mod, site_sex_reg_mod_output,
 # Get a list of all SIMD quintiles in analysis
 # Exclude blank quintiles
 
-simd_types <- joined_data %>% 
-  distinct(simd2020v2_sc_quintile) %>% 
-  filter(!is.na(simd2020v2_sc_quintile)) %>% 
+simd_types <- joined_data |> 
+  distinct(simd2020v2_sc_quintile) |> 
+  filter(!is.na(simd2020v2_sc_quintile)) |> 
   pull()
 
 # Create a data frame for matching to joined_data
@@ -260,7 +250,7 @@ match_df_simd <- expand.grid(year = c(start:end), sex = c("1", "2"),
                              age_group = c(0:18), 
                              emergency_flag = c("Non-Emergency", "Emergency"), 
                              incidence_type = c(cancer_types), 
-                             simd2020v2_sc_quintile = c(simd_types)) %>% 
+                             simd2020v2_sc_quintile = c(simd_types)) |> 
   filter(!(incidence_type == "Breast" & sex == "1") & 
            !(incidence_type == "Prostate" & sex == "2") & 
            !(incidence_type == "Cervical" & sex == "1"))
@@ -273,15 +263,15 @@ match_df_simd <- expand.grid(year = c(start:end), sex = c("1", "2"),
 # admissions for these groups to 0, as they appear as NAs when joined on
 # Join on Scotland populations and also ESP and arrange data
 
-inc_rate_simd_data <- joined_data %>% 
-  filter(!is.na(simd2020v2_sc_quintile)) %>% 
-  mutate(age_group = standard_pop_age_groups(age_in_years)) %>% 
+inc_rate_simd_data <- joined_data |> 
+  filter(!is.na(simd2020v2_sc_quintile)) |> 
+  mutate(age_group = standard_pop_age_groups(age_in_years)) |> 
   count(year = incidence_year, sex, age_group, emergency_flag, incidence_type, 
-        simd2020v2_sc_quintile) %>% 
-  full_join(match_df_simd) %>% 
-  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) %>% 
-  left_join(simd_pop) %>% 
-  left_join(esp2013) %>% 
+        simd2020v2_sc_quintile) |> 
+  full_join(match_df_simd) |> 
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), 0, .))) |> 
+  left_join(simd_pop) |> 
+  left_join(esp2013) |> 
   arrange(year, sex, age_group, incidence_type, emergency_flag, 
           simd2020v2_sc_quintile)
 
@@ -289,7 +279,7 @@ inc_rate_simd_data <- joined_data %>%
 # Group data by emergency_flag, incidence_type and simd2020v2_sc_quintile
 
 simd_reg_mod_without_sex <- fitted_model_without_sex(
-  inc_rate_simd_data %>% 
+  inc_rate_simd_data |> 
     filter(incidence_type %in% c("Breast", "Cervical", "Prostate")), 
   emergency_flag, incidence_type, simd2020v2_sc_quintile)
 
@@ -297,14 +287,14 @@ simd_reg_mod_without_sex <- fitted_model_without_sex(
 # Group data by emergency_flag, incidence_type and simd2020v2_sc_quintile
 
 simd_reg_mod_with_sex <- fitted_model_with_sex(
-  inc_rate_simd_data %>% 
+  inc_rate_simd_data |> 
     filter(incidence_type %in% c("Colorectal", "Head and Neck", "Lung", 
                                  "Upper GI")), 
   emergency_flag, incidence_type, simd2020v2_sc_quintile)
 
 # Bind site_reg_mod_one_sex and site_reg_mod_two_sex and drop data column
 
-simd_reg_mod <- bind_rows(simd_reg_mod_without_sex, simd_reg_mod_with_sex) %>% 
+simd_reg_mod <- bind_rows(simd_reg_mod_without_sex, simd_reg_mod_with_sex) |> 
   select(-data)
 
 # Group by emergency_flag and incidence_type and nest data
@@ -313,11 +303,11 @@ simd_reg_mod <- bind_rows(simd_reg_mod_without_sex, simd_reg_mod_with_sex) %>%
 # using the data from the data column
 # Unnest data to get data back into standard format
 
-simd_reg_mod_output <- inc_rate_simd_data %>% 
-  group_by(emergency_flag, incidence_type, simd2020v2_sc_quintile) %>%
-  nest() %>% 
-  inner_join(simd_reg_mod) %>% 
-  mutate(exp = purrr::map2(mod, data, predict, type = "response")) %>% 
+simd_reg_mod_output <- inc_rate_simd_data |> 
+  group_by(emergency_flag, incidence_type, simd2020v2_sc_quintile) |>
+  nest() |> 
+  inner_join(simd_reg_mod) |> 
+  mutate(exp = purrr::map2(mod, data, predict, type = "response")) |> 
   unnest(c(data, exp))
 
 # Calculate incidence rates by year, emergency_flag, incidence_type and 
@@ -328,14 +318,14 @@ obs_inc_site_simd_output <- calculate_incidence(simd_reg_mod_output,
                                                 c("year", "emergency_flag", 
                                                   "incidence_type", 
                                                   "simd2020v2_sc_quintile"),
-                                                esp2013, n, pop, 0.95) %>% 
+                                                esp2013, n, pop, 0.95) |> 
   rename_with(~ paste0("obs_", .), c("n", "inc", "l_ci", "u_ci"))
 
 exp_inc_site_simd_output <- calculate_incidence(simd_reg_mod_output, 
                                                 c("year", "emergency_flag", 
                                                   "incidence_type", 
                                                   "simd2020v2_sc_quintile"),
-                                                esp2013, exp, pop, 0.95) %>% 
+                                                esp2013, exp, pop, 0.95) |> 
   rename_with(~ paste0("exp_", .), c("n", "inc", "l_ci", "u_ci"))
 
 # Join observed and expected together
@@ -354,7 +344,7 @@ inc_site_simd_output_sir <- calculate_ratio(inc_site_simd_output,
 # Calculate p-values for SIRs
 # This only works for intergers, so use obs_n and exp_n
 
-inc_site_simd_output_sir <- inc_site_simd_output_sir %>% 
+inc_site_simd_output_sir <- inc_site_simd_output_sir |> 
   mutate(sir_p_value = map2_dbl(obs_n, exp_n, ~ 
                                   poisson.test(x = .x, `T` = .y, 
                                                alternative = "t", 
@@ -450,20 +440,20 @@ ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_plot.png")),
 
 # Same as above but with linear regression
 
-# inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output, 
-#                                                        "Non-Emergency", 
-#                                                        "incidence_type") + 
-#   scale_colour_manual("Cancer",
-#                       values = phs_colours(c("phs-purple", "phs-magenta",
-#                                              "phs-blue", "phs-green", 
-#                                              "phs-teal", "phs-liberty", 
-#                                              "phs-graphite"))) +
-#   ylab("Age-Sex Standardised Rate per 100,000") + 
-#   xlab("Year") + 
-#   scale_y_continuous(expand = c(0, 0), limits = c(0, 155))
+inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output,
+                                                       "Non-Emergency",
+                                                       "incidence_type") +
+  scale_colour_manual("Cancer",
+                      values = phs_colours(c("phs-purple", "phs-magenta",
+                                             "phs-blue", "phs-green",
+                                             "phs-teal", "phs-liberty",
+                                             "phs-graphite"))) +
+  ylab("Age-Sex Standardised Rate per 100,000") +
+  xlab("Year") +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 155))
 
 # inc_rate_el_plot_reg <- create_regression_chart(
-#   inc_rate_site_output %>% 
+#   inc_rate_site_output |> 
 #     mutate(plot_label = if_else(year == max(year), 
 #                                 incidence_type, NA_character_)), 
 #                         "Non-Emergency", 
@@ -491,7 +481,7 @@ ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_plot.png")),
 #                   # xlim = as.Date(c("2021-02-16", "2021-03-01")),
 #                   # ylim = c(0,150),
 #   ) +
-#   geom_text_repel(data = . %>% filter(!is.na(plot_label)),
+#   geom_text_repel(data = . |> filter(!is.na(plot_label)),
 #                    aes(y = obs_inc, label = str_wrap(plot_label, 10), 
 #                        color = factor(plot_label)),
 #                    segment.alpha = 0, ## This will 'hide' the link
@@ -514,23 +504,117 @@ ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_plot.png")),
 #                                            "phs-blue", "phs-magenta", 
 #                                            "phs-teal")))
 
-inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output, 
-                                                "Non-Emergency", "incidence_type") +
-  scale_colour_manual("Cancer",
-                      values = phs_colours(c("phs-purple", "phs-magenta",
-                                             "phs-blue", "phs-green", 
-                                             "phs-teal", "phs-liberty", 
-                                             "phs-graphite"))) +
-  ylab("Age-Sex Standardised Rate per 100,000") + 
-  xlab("Year") + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 183))
-
-inc_rate_el_plot_reg
+# inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output, 
+#                                                 "Non-Emergency", "incidence_type") +
+#   scale_colour_manual("Cancer",
+#                       values = phs_colours(c("phs-purple", "phs-magenta",
+#                                              "phs-blue", "phs-green", 
+#                                              "phs-teal", "phs-liberty", 
+#                                              "phs-graphite"))) +
+#   ylab("Age-Sex Standardised Rate per 100,000") + 
+#   xlab("Year") + 
+#   scale_y_continuous(expand = c(0, 0), limits = c(0, 183))
 
 # Save chart
 
 ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_regression_plot.png")),
        plot = inc_rate_el_plot_reg,
+       height = 14,
+       width = 23,
+       dpi = 500)
+
+
+### 3.1.1 IACR-ENCR Chart ----
+
+# This section defines a chart for the IACR-ENCR conference poster
+
+# Set year as a factor
+
+inc_rate_site_output_encr <- inc_rate_site_output |> 
+  mutate(year = as.factor(year))
+
+levels(inc_rate_site_output_encr$year)
+
+inc_rate_site_output_encr <- inc_rate_site_output_encr[inc_rate_site_output_encr$year != "2015",]
+inc_rate_site_output_encr <- inc_rate_site_output_encr[inc_rate_site_output_encr$year != "2016",]
+
+inc_rate_site_output_encr$year <- factor(inc_rate_site_output_encr$year)
+
+# Add a blank level to year
+# This adds more space on the chart for labels
+
+levels(inc_rate_site_output_encr$year) <- c(levels(inc_rate_site_output_encr$year), "")
+
+levels(inc_rate_site_output_encr$year)
+
+# Set labels to use 2021 data - this ensures we only have one label per cancer
+# Reformat Head and Neck to run over two lines and set Neck to lowercase
+# Filter to keep non-emergencies
+# Set incidence_type as an ordered factor
+# Define ggplot aesthetics and add line using incidence_type
+# Add an error bar for 95% confidence intervals
+# Add theme details to adjust text - this will make the chart look odd here
+# but looks fine once saved out
+# Define colours based on phsstyles package
+# Add axis labels and set y axis to start from 0 and go to specified length
+# Add value labels and define fill colours for each
+
+inc_rate_el_plot_reg_encr <- inc_rate_site_output_encr  |>
+  mutate(plot_label = if_else(year == 2021,
+                              incidence_type, NA_character_), 
+         plot_label = if_else(plot_label == "Head and Neck", 
+                              sprintf("Head and\nneck"), 
+                              plot_label), 
+         incidence_type = if_else(incidence_type == "Head and Neck", 
+                                  "Head and neck", 
+                                  incidence_type)) |> 
+  filter(emergency_flag == "Non-Emergency") |> 
+  filter(!(year %in% c("2015", "2016"))) |> 
+  mutate(!!as.name("incidence_type") := fct_reorder(!!as.name("incidence_type"), obs_inc, 
+                                                    tail, n = 1, .desc = TRUE)) |>    
+  ggplot(aes(x = year, group = !!as.name("incidence_type"), 
+             colour = !!as.name("incidence_type"))) +
+  geom_line(aes(y = obs_inc, colour = !!as.name("incidence_type")), size = 2) + 
+  geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
+  geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), 
+                width = .1) +
+  theme(plot.title = element_text(hjust = 0.5, size = 40),
+        axis.text.x = element_text(vjust = 0.5, size = 30),
+        axis.text.y = element_text(size = 30),
+        axis.title = element_text(size = 35),
+        axis.title.y = element_text(angle = 0, vjust = 0.5), 
+        legend.title = element_text(size = 30),
+        legend.key.size = unit(1.5, "cm"), 
+        legend.text = element_text(size = 30)) + 
+  scale_colour_manual("Cancer",
+                      values = phs_colours(c("phs-purple", "phs-magenta",
+                                             "phs-blue", "phs-green",
+                                             "phs-teal", "phs-liberty",
+                                             "phs-graphite"))) +
+  ylab("Rate\nper\n100,000") +
+  xlab("Year") +
+  scale_x_discrete(drop = FALSE) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 185)) + 
+  geom_label_repel(aes(label = plot_label, fill = incidence_type, y = obs_inc), 
+                   colour = "white", fontface = 2,
+                   segment.color = NA,
+                   direction = "y", hjust = "left",
+                   box.padding = 0,
+                   point.padding = 0,
+                   nudge_x = 0.2,
+                   nudge_y = 1,
+                   show.legend = FALSE, size = 9) + 
+  scale_fill_manual(values = phs_colours(c("phs-purple", "phs-magenta",
+                                           "phs-blue", "phs-green", 
+                                           "phs-teal", "phs-liberty", 
+                                           "phs-graphite")))
+
+inc_rate_el_plot_reg_encr
+
+# Save chart
+
+ggsave(here(glue("IACR_ENCR_2023/incidence_rate_non_emergency_line_regression_plot_iacr_encr.png")),
+       plot = inc_rate_el_plot_reg_encr,
        height = 14,
        width = 23,
        dpi = 500)
@@ -549,12 +633,12 @@ ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_regression_plot
 # Add theme details to adjust text - this will make the chart look odd in R but
 # looks fine once saved out
 
-inc_rate_sex_el_plot <- inc_rate_site_sex_output %>% 
+inc_rate_sex_el_plot <- inc_rate_site_sex_output |> 
   filter(emergency_flag == "Non-Emergency" & 
            incidence_type %in% c("Colorectal", "Head and Neck", "Lung", 
-                                 "Upper GI")) %>% 
+                                 "Upper GI")) |> 
   mutate(year = as.character(year), 
-         sex = recode(sex, "1" = "Male", "2" = "Female")) %>% 
+         sex = recode(sex, "1" = "Male", "2" = "Female")) |> 
   ggplot(aes(x = year, y = obs_inc, group = sex)) +
   geom_line(aes(colour = sex), size = 2) + 
   geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), width = .1) +
@@ -584,12 +668,12 @@ ggsave(here(glue("Charts/{end}/incidence_rate_sex_non_emergency_plot.png")),
 
 # Same as above but with linear regression
 
-inc_rate_sex_el_plot_reg <- inc_rate_site_sex_output %>% 
+inc_rate_sex_el_plot_reg <- inc_rate_site_sex_output |> 
   filter(emergency_flag == "Non-Emergency" & 
            incidence_type %in% c("Colorectal", "Head and Neck", "Lung", 
-                                 "Upper GI")) %>% 
+                                 "Upper GI")) |> 
   mutate(year = as.character(year), 
-         sex = recode(sex, "1" = "Male", "2" = "Female")) %>% 
+         sex = recode(sex, "1" = "Male", "2" = "Female")) |> 
   ggplot(aes(x = year, group = sex, colour = sex)) +
   geom_line(aes(y = obs_inc, colour = sex), size = 2) + 
   geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
@@ -620,12 +704,12 @@ ggsave(here(glue("Charts/{end}/incidence_rate_sex_non_emergency_regression_plot.
 
 # Same as above but for emergency presentations
 
-inc_rate_sex_em_plot_reg <- inc_rate_site_sex_output %>% 
+inc_rate_sex_em_plot_reg <- inc_rate_site_sex_output |> 
   filter(emergency_flag == "Emergency" & 
            incidence_type %in% c("Colorectal", "Head and Neck", "Lung", 
-                                 "Upper GI")) %>% 
+                                 "Upper GI")) |> 
   mutate(year = as.character(year), 
-         sex = recode(sex, "1" = "Male", "2" = "Female")) %>% 
+         sex = recode(sex, "1" = "Male", "2" = "Female")) |> 
   ggplot(aes(x = year, group = sex, colour = sex)) +
   geom_line(aes(y = obs_inc, colour = sex), size = 2) + 
   geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
@@ -635,8 +719,6 @@ inc_rate_sex_em_plot_reg <- inc_rate_site_sex_output %>%
   facet_wrap(~ incidence_type) + 
   ylab("Age-Standardised Rate per 100,000") + 
   xlab("Year") + 
-  # ggtitle("Age-Standardised Incidence Rate per 100,000 for Cancers with an
-  #         Emergency Route to Diagnosis by Sex") + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 62)) +
   theme(plot.title = element_text(hjust = 0.5, size = 40),
         axis.text.x = element_text(vjust = 0.5, size = 30),
@@ -663,7 +745,7 @@ ggsave(here(glue("Charts/{end}/incidence_rate_sex_emergency_regression_plot.png"
 # Define colours based on phsstyles package
 # Add axis labels and set y axis to start from 0 and go to specified length
 
-inc_rate_simd_el_plot <- create_chart(inc_rate_site_simd_output %>% 
+inc_rate_simd_el_plot <- create_chart(inc_rate_site_simd_output |> 
                                         filter(incidence_type == "Lung"), 
                                       "Non-Emergency", "simd2020v2_sc_quintile") + 
   scale_colour_manual("SIMD Quintile",
@@ -685,7 +767,7 @@ ggsave(here(glue("Charts/{end}/incidence_rate_simd_non_emergency_plot.png")),
 # Same as above but with linear regression
 
 inc_rate_simd_el_plot_reg <- create_regression_chart(
-  inc_rate_site_simd_output %>% 
+  inc_rate_site_simd_output |> 
     filter(incidence_type == "Lung"), 
   "Non-Emergency", "simd2020v2_sc_quintile") + 
   scale_colour_manual("SIMD Quintile",
@@ -728,13 +810,14 @@ hs <- createStyle(fontColour = "#ffffff", fgFill = "#0078D4",
 addWorksheet(wb, "Site Incidence Rates", gridLines = FALSE)
 
 writeData(wb, sheet = "Site Incidence Rates", 
-          inc_rate_site_output %>% 
+          inc_rate_site_output |> 
             mutate(across(c(obs_inc, obs_l_ci, obs_u_ci, 
                             exp_inc, exp_l_ci, exp_u_ci, 
-                            sir, sir_l_ci, sir_u_ci, sir_p_value, 
+                            sir, sir_l_ci, sir_u_ci, 
                             srr, srr_l_ci, srr_u_ci, 
                             exp_n),
-                          ~ round_half_up(., 2))) %>%
+                          ~ round_half_up(., 2)), 
+                   sir_p_value = round_half_up(sir_p_value, 3)) |>
             select(Year = year, 
                    Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
@@ -765,14 +848,15 @@ setColWidths(wb, sheet = "Site Incidence Rates", cols = 1:18, widths = "auto")
 addWorksheet(wb, "Sex Incidence Rates", gridLines = FALSE)
 
 writeData(wb, sheet = "Sex Incidence Rates", 
-          inc_rate_site_sex_output %>% 
+          inc_rate_site_sex_output |> 
             mutate(across(c(obs_inc, obs_l_ci, obs_u_ci, 
                             exp_inc, exp_l_ci, exp_u_ci, 
-                            sir, sir_l_ci, sir_u_ci, sir_p_value, 
+                            sir, sir_l_ci, sir_u_ci, 
                             srr, srr_l_ci, srr_u_ci, 
                             exp_n),
-                          ~ round_half_up(., 2))) %>%
-            mutate(sex = recode(sex, "1" = "Male", "2" = "Female")) %>% 
+                          ~ round_half_up(., 2)), 
+                   sir_p_value = round_half_up(sir_p_value, 3)) |>
+            mutate(sex = recode(sex, "1" = "Male", "2" = "Female")) |> 
             select(Year = year, 
                    Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
@@ -804,13 +888,13 @@ setColWidths(wb, sheet = "Sex Incidence Rates", cols = 1:19, widths = "auto")
 addWorksheet(wb, "SIMD Incidence Rates", gridLines = FALSE)
 
 writeData(wb, sheet = "SIMD Incidence Rates", 
-          inc_rate_site_simd_output %>% 
+          inc_rate_site_simd_output |> 
             mutate(across(c(obs_inc, obs_l_ci, obs_u_ci, 
                             exp_inc, exp_l_ci, exp_u_ci, 
                             sir, sir_l_ci, sir_u_ci, sir_p_value, 
                             srr, srr_l_ci, srr_u_ci, 
                             exp_n),
-                          ~ round_half_up(., 2))) %>%
+                          ~ round_half_up(., 2))) |>
             select(Year = year, 
                    Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
@@ -861,15 +945,16 @@ hs <- createStyle(fontColour = "#ffffff", fgFill = "#0078D4",
 addWorksheet(report_wb, "SIR Data", gridLines = FALSE)
 
 writeData(report_wb, sheet = "SIR Data", 
-          inc_rate_site_output %>% 
-            filter(year %in% c(2020, 2021)) %>% 
+          inc_rate_site_output |> 
+            filter(year %in% c(2020, 2021)) |> 
             mutate(across(c(obs_inc, obs_l_ci, obs_u_ci, 
                             exp_inc, exp_l_ci, exp_u_ci, 
-                            sir, sir_l_ci, sir_u_ci, sir_p_value, 
+                            sir, sir_l_ci, sir_u_ci, 
                             srr, srr_l_ci, srr_u_ci, 
                             exp_n),
-                          ~ round_half_up(., 2))) %>%
-            mutate(sir_ci = paste0("(", sir_l_ci, ", ", sir_u_ci, ")")) %>% 
+                          ~ round_half_up(., 2)), 
+                   sir_p_value = round_half_up(sir_p_value, 3)) |>
+            mutate(sir_ci = paste0("(", sir_l_ci, ", ", sir_u_ci, ")")) |> 
             select(Year = year, 
                    Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
@@ -890,15 +975,16 @@ setColWidths(report_wb, sheet = "SIR Data", cols = 1:8, widths = "auto")
 addWorksheet(report_wb, "SRR Data", gridLines = FALSE)
 
 writeData(report_wb, sheet = "SRR Data", 
-          inc_rate_site_output %>% 
-            filter(year %in% c(2020, 2021)) %>% 
+          inc_rate_site_output |> 
+            filter(year %in% c(2020, 2021)) |> 
             mutate(across(c(obs_inc, obs_l_ci, obs_u_ci, 
                             exp_inc, exp_l_ci, exp_u_ci, 
                             sir, sir_l_ci, sir_u_ci, 
                             srr, srr_l_ci, srr_u_ci, 
                             exp_n),
-                          ~ round_half_up(., 2))) %>%
-            mutate(srr_ci = paste0("(", srr_l_ci, ", ", srr_u_ci, ")")) %>% 
+                          ~ round_half_up(., 2)), 
+                   sir_p_value = round_half_up(sir_p_value, 3)) |>
+            mutate(srr_ci = paste0("(", srr_l_ci, ", ", srr_u_ci, ")")) |> 
             select(Year = year, 
                    Type = emergency_flag, 
                    "Cancer Type" = incidence_type, 
