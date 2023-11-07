@@ -9,4 +9,6 @@ This repository contains code for analysing emergency and non-emergency routes t
 - `4_method_1st_detection` produces age-sex standardised incidence rates and ratios by route, year, cancer site and method of 1st detection.
 - `5_stage_at_diagnosis` produces age-sex standardised incidence rates and ratios by route, year, cancer site and stage at diagnosis.
 
+This analysis includes breast (females), cervical, colorectal, head and neck, lung, prostate, and upper GI cancers. You can view published data on brain cancer and leukaemias in Public Health Scotland's [Cancer Incidence publication](https://publichealthscotland.scot/publications/cancer-incidence-in-scotland/cancer-incidence-in-scotland-to-december-2021/).
+
 If you have any questions about this analysis or wish further information please contact [calum.purdie@phs.scot](mailto:calum.purdie@phs.scot)
