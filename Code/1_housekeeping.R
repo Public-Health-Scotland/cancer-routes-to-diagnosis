@@ -308,7 +308,7 @@ smr06_query <-
   paste(
     "SELECT INCIDENCE_DATE, SEX, UPI_NUMBER, ICD10S_CANCER_SITE, ", 
     "AGE_IN_YEARS, POSTCODE, METHOD_1ST_DETECTION, ETHNIC_GROUP, TUMOUR_NO, ",
-    "ENCR_INCIDENCE_DATE ", 
+    "ENCR_INCIDENCE_DATE, OUT_OF_SCOTLAND ", 
     "FROM ANALYSIS.SMR06_PI",
     "WHERE INCIDENCE_DATE >= TO_DATE('", cancer_start, "', 'yyyy-mm-dd') AND",
     "INCIDENCE_DATE <= TO_DATE('", cancer_end, "', 'yyyy-mm-dd')"
@@ -316,6 +316,7 @@ smr06_query <-
  
 # Extract data from SMR06 using above query
 # Clean names and remove records with blank upi_number
+# Remove records where out_of_scotland is not blank
 # Create 3 character cancer_site code based on icd10s_cancer_site
 # Define incidence type, format date and calculate incidence year
 # Remove men with breast or cervical cancer and women with prostate cancer
@@ -323,6 +324,7 @@ smr06_query <-
 smr06_data <- as_tibble(dbGetQuery(channel, statement = smr06_query)) |> 
   clean_names() |> 
   filter(!is.na(upi_number)) |>  
+  filter(is.na(out_of_scotland)) |> 
   mutate(cancer_site = substr(icd10s_cancer_site, 1, 3), 
          incidence_type = case_when(cancer_site %in% c("C18", "C19", "C20") ~ 
                                       "Colorectal", 
