@@ -450,7 +450,7 @@ inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output,
                                              "phs-graphite"))) +
   ylab("Age-Sex Standardised Rate per 100,000") +
   xlab("Year") +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 155))
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 185))
 
 # inc_rate_el_plot_reg <- create_regression_chart(
 #   inc_rate_site_output |> 
