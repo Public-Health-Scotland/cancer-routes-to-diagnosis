@@ -524,100 +524,100 @@ ggsave(here(glue("Charts/{end}/incidence_rate_non_emergency_line_regression_plot
        dpi = 500)
 
 
-### 3.1.1 IACR-ENCR Chart ----
-
-# This section defines a chart for the IACR-ENCR conference poster
-
-# Set year as a factor
-
-inc_rate_site_output_encr <- inc_rate_site_output |> 
-  mutate(year = as.factor(year))
-
-levels(inc_rate_site_output_encr$year)
-
-inc_rate_site_output_encr <- inc_rate_site_output_encr[inc_rate_site_output_encr$year != "2015",]
-inc_rate_site_output_encr <- inc_rate_site_output_encr[inc_rate_site_output_encr$year != "2016",]
-
-inc_rate_site_output_encr$year <- factor(inc_rate_site_output_encr$year)
-
-# Add a blank level to year
-# This adds more space on the chart for labels
-
-levels(inc_rate_site_output_encr$year) <- c(levels(inc_rate_site_output_encr$year), "")
-
-levels(inc_rate_site_output_encr$year)
-
-# Set labels to use 2021 data - this ensures we only have one label per cancer
-# Reformat Head and Neck to run over two lines and set Neck to lowercase
-# Filter to keep non-emergencies
-# Set incidence_type as an ordered factor
-# Define ggplot aesthetics and add line using incidence_type
-# Add an error bar for 95% confidence intervals
-# Add theme details to adjust text - this will make the chart look odd here
-# but looks fine once saved out
-# Define colours based on phsstyles package
-# Add axis labels and set y axis to start from 0 and go to specified length
-# Add value labels and define fill colours for each
-
-inc_rate_el_plot_reg_encr <- inc_rate_site_output_encr  |>
-  mutate(plot_label = if_else(year == 2021,
-                              incidence_type, NA_character_), 
-         plot_label = if_else(plot_label == "Head and Neck", 
-                              sprintf("Head and\nneck"), 
-                              plot_label), 
-         incidence_type = if_else(incidence_type == "Head and Neck", 
-                                  "Head and neck", 
-                                  incidence_type)) |> 
-  filter(emergency_flag == "Non-Emergency") |> 
-  filter(!(year %in% c("2015", "2016"))) |> 
-  mutate(!!as.name("incidence_type") := fct_reorder(!!as.name("incidence_type"), obs_inc, 
-                                                    tail, n = 1, .desc = TRUE)) |>    
-  ggplot(aes(x = year, group = !!as.name("incidence_type"), 
-             colour = !!as.name("incidence_type"))) +
-  geom_line(aes(y = obs_inc, colour = !!as.name("incidence_type")), size = 2) + 
-  geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
-  geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), 
-                width = .1) +
-  theme(plot.title = element_text(hjust = 0.5, size = 40),
-        axis.text.x = element_text(vjust = 0.5, size = 30),
-        axis.text.y = element_text(size = 30),
-        axis.title = element_text(size = 35),
-        axis.title.y = element_text(angle = 0, vjust = 0.5), 
-        legend.title = element_text(size = 30),
-        legend.key.size = unit(1.5, "cm"), 
-        legend.text = element_text(size = 30)) + 
-  scale_colour_manual("Cancer",
-                      values = phs_colours(c("phs-purple", "phs-magenta",
-                                             "phs-blue", "phs-green",
-                                             "phs-teal", "phs-liberty",
-                                             "phs-graphite"))) +
-  ylab("Rate\nper\n100,000") +
-  xlab("Year") +
-  scale_x_discrete(drop = FALSE) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 185)) + 
-  geom_label_repel(aes(label = plot_label, fill = incidence_type, y = obs_inc), 
-                   colour = "white", fontface = 2,
-                   segment.color = NA,
-                   direction = "y", hjust = "left",
-                   box.padding = 0,
-                   point.padding = 0,
-                   nudge_x = 0.2,
-                   nudge_y = 1,
-                   show.legend = FALSE, size = 9) + 
-  scale_fill_manual(values = phs_colours(c("phs-purple", "phs-magenta",
-                                           "phs-blue", "phs-green", 
-                                           "phs-teal", "phs-liberty", 
-                                           "phs-graphite")))
-
-inc_rate_el_plot_reg_encr
-
-# Save chart
-
-ggsave(here(glue("IACR_ENCR_2023/incidence_rate_non_emergency_line_regression_plot_iacr_encr.png")),
-       plot = inc_rate_el_plot_reg_encr,
-       height = 14,
-       width = 23,
-       dpi = 500)
+# ### 3.1.1 IACR-ENCR Chart ----
+# 
+# # This section defines a chart for the IACR-ENCR conference poster
+# 
+# # Set year as a factor
+# 
+# inc_rate_site_output_encr <- inc_rate_site_output |> 
+#   mutate(year = as.factor(year))
+# 
+# levels(inc_rate_site_output_encr$year)
+# 
+# inc_rate_site_output_encr <- inc_rate_site_output_encr[inc_rate_site_output_encr$year != "2015",]
+# inc_rate_site_output_encr <- inc_rate_site_output_encr[inc_rate_site_output_encr$year != "2016",]
+# 
+# inc_rate_site_output_encr$year <- factor(inc_rate_site_output_encr$year)
+# 
+# # Add a blank level to year
+# # This adds more space on the chart for labels
+# 
+# levels(inc_rate_site_output_encr$year) <- c(levels(inc_rate_site_output_encr$year), "")
+# 
+# levels(inc_rate_site_output_encr$year)
+# 
+# # Set labels to use 2021 data - this ensures we only have one label per cancer
+# # Reformat Head and Neck to run over two lines and set Neck to lowercase
+# # Filter to keep non-emergencies
+# # Set incidence_type as an ordered factor
+# # Define ggplot aesthetics and add line using incidence_type
+# # Add an error bar for 95% confidence intervals
+# # Add theme details to adjust text - this will make the chart look odd here
+# # but looks fine once saved out
+# # Define colours based on phsstyles package
+# # Add axis labels and set y axis to start from 0 and go to specified length
+# # Add value labels and define fill colours for each
+# 
+# inc_rate_el_plot_reg_encr <- inc_rate_site_output_encr  |>
+#   mutate(plot_label = if_else(year == 2021,
+#                               incidence_type, NA_character_), 
+#          plot_label = if_else(plot_label == "Head and Neck", 
+#                               sprintf("Head and\nneck"), 
+#                               plot_label), 
+#          incidence_type = if_else(incidence_type == "Head and Neck", 
+#                                   "Head and neck", 
+#                                   incidence_type)) |> 
+#   filter(emergency_flag == "Non-Emergency") |> 
+#   filter(!(year %in% c("2015", "2016"))) |> 
+#   mutate(!!as.name("incidence_type") := fct_reorder(!!as.name("incidence_type"), obs_inc, 
+#                                                     tail, n = 1, .desc = TRUE)) |>    
+#   ggplot(aes(x = year, group = !!as.name("incidence_type"), 
+#              colour = !!as.name("incidence_type"))) +
+#   geom_line(aes(y = obs_inc, colour = !!as.name("incidence_type")), size = 2) + 
+#   geom_line(aes(y = exp_inc), size = 0.5, linetype = "dashed") + 
+#   geom_errorbar(aes(ymin = obs_l_ci, ymax = obs_u_ci), 
+#                 width = .1) +
+#   theme(plot.title = element_text(hjust = 0.5, size = 40),
+#         axis.text.x = element_text(vjust = 0.5, size = 30),
+#         axis.text.y = element_text(size = 30),
+#         axis.title = element_text(size = 35),
+#         axis.title.y = element_text(angle = 0, vjust = 0.5), 
+#         legend.title = element_text(size = 30),
+#         legend.key.size = unit(1.5, "cm"), 
+#         legend.text = element_text(size = 30)) + 
+#   scale_colour_manual("Cancer",
+#                       values = phs_colours(c("phs-purple", "phs-magenta",
+#                                              "phs-blue", "phs-green",
+#                                              "phs-teal", "phs-liberty",
+#                                              "phs-graphite"))) +
+#   ylab("Rate\nper\n100,000") +
+#   xlab("Year") +
+#   scale_x_discrete(drop = FALSE) +
+#   scale_y_continuous(expand = c(0, 0), limits = c(0, 185)) + 
+#   geom_label_repel(aes(label = plot_label, fill = incidence_type, y = obs_inc), 
+#                    colour = "white", fontface = 2,
+#                    segment.color = NA,
+#                    direction = "y", hjust = "left",
+#                    box.padding = 0,
+#                    point.padding = 0,
+#                    nudge_x = 0.2,
+#                    nudge_y = 1,
+#                    show.legend = FALSE, size = 9) + 
+#   scale_fill_manual(values = phs_colours(c("phs-purple", "phs-magenta",
+#                                            "phs-blue", "phs-green", 
+#                                            "phs-teal", "phs-liberty", 
+#                                            "phs-graphite")))
+# 
+# inc_rate_el_plot_reg_encr
+# 
+# # Save chart
+# 
+# ggsave(here(glue("IACR_ENCR_2023/incidence_rate_non_emergency_line_regression_plot_iacr_encr.png")),
+#        plot = inc_rate_el_plot_reg_encr,
+#        height = 14,
+#        width = 23,
+#        dpi = 500)
 
 
 ### 3.2 Cancer Site and Sex Split ----

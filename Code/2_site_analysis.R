@@ -89,7 +89,7 @@ n_cancers_em_plot <- site_output |>
                                              "phs-purple"))) +
   ylab("Number of Emergency Cancer Presentations") + 
   xlab("Year") + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 2200)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 2400)) +
   theme(plot.title = element_text(hjust = 0.5, size = 40),
         axis.text.x = element_text(vjust = 0.5, size = 30),
         axis.text.y = element_text(size = 30),
@@ -128,7 +128,7 @@ n_cancers_el_plot <- site_output |>
                                              "phs-purple"))) +
   ylab("Number of Non-Emergency Cancer Presentations") + 
   xlab("Year") + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 4200)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 5600)) +
   theme(plot.title = element_text(hjust = 0.5, size = 40),
         axis.text.x = element_text(vjust = 0.5, size = 30),
         axis.text.y = element_text(size = 30),
