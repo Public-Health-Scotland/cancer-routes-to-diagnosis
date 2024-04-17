@@ -335,9 +335,11 @@ inc_rate_em_plot <- create_chart(inc_rate_output, "Emergency", "tnm_stage_2") +
 inc_rate_em_plot_reg <- create_regression_chart(inc_rate_output, 
                                                 "Emergency", "tnm_stage_2") + 
   scale_colour_manual("TNM Stage",
-                      values = phs_colours(c("phs-purple", "phs-magenta",
-                                             "phs-blue", "phs-green", 
-                                             "phs-teal"))) +
+                      values = c("I" = phs_colours("phs-purple"), 
+                                 "II" = phs_colours("phs-magenta"),
+                                 "III" = phs_colours("phs-blue"), 
+                                 "IV" = phs_colours("phs-green"), 
+                                 "X" = phs_colours("phs-teal"))) +
   ylab("Age-Sex Standardised Rate per 100,000") + 
   xlab("Year") + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 63))
@@ -380,9 +382,11 @@ inc_rate_el_plot_reg <- create_regression_chart(inc_rate_output,
                                                 "Non-Emergency", 
                                                 "tnm_stage_2") + 
   scale_colour_manual("TNM Stage",
-                      values = phs_colours(c("phs-purple", "phs-magenta",
-                                             "phs-blue", "phs-green", 
-                                             "phs-teal"))) +
+                      values = c("I" = phs_colours("phs-purple"), 
+                                 "II" = phs_colours("phs-magenta"),
+                                 "III" = phs_colours("phs-blue"), 
+                                 "IV" = phs_colours("phs-green"), 
+                                 "X" = phs_colours("phs-teal"))) +
   ylab("Age-Sex Standardised Rate per 100,000") + 
   xlab("Year") + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 95))
