@@ -399,10 +399,13 @@ inc_rate_em_plot_reg <- create_regression_chart(inc_rate_site_output,
                                                 "Emergency", 
                                                 "incidence_type") + 
   scale_colour_manual("Cancer",
-                      values = phs_colours(c("phs-purple", "phs-magenta",
-                                             "phs-blue", "phs-green", 
-                                             "phs-teal", "phs-liberty", 
-                                             "phs-graphite"))) +
+                      values = c("Lung" = phs_colours("phs-purple"), 
+                                 "Upper GI" = phs_colours("phs-magenta"),
+                                 "Colorectal" = phs_colours("phs-blue"), 
+                                 "Prostate" = phs_colours("phs-green"), 
+                                 "Breast" = phs_colours("phs-teal"), 
+                                 "Head and Neck" = phs_colours("phs-liberty"), 
+                                 "Cervical" = phs_colours("phs-graphite"))) +
   ylab("Age-Sex Standardised Rate per 100,000") + 
   xlab("Year") + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 48))
@@ -444,10 +447,21 @@ inc_rate_el_plot_reg <- create_regression_chart(inc_rate_site_output,
                                                        "Non-Emergency",
                                                        "incidence_type") +
   scale_colour_manual("Cancer",
-                      values = phs_colours(c("phs-purple", "phs-magenta",
-                                             "phs-blue", "phs-green",
-                                             "phs-teal", "phs-liberty",
-                                             "phs-graphite"))) +
+                      values = c("Lung" = phs_colours("phs-purple"), 
+                                 "Upper GI" = phs_colours("phs-magenta"),
+                                 "Colorectal" = phs_colours("phs-blue"), 
+                                 "Prostate" = phs_colours("phs-green"), 
+                                 "Breast" = phs_colours("phs-teal"), 
+                                 "Head and Neck" = phs_colours("phs-liberty"), 
+                                 "Cervical" = phs_colours("phs-graphite"))) +
+  # scale_colour_manual("Cancer",
+  #                     values = phs_colours(c("Lung" = "phs-purple", 
+  #                                            "Upper GI" = "phs-magenta",
+  #                                            "Colorectal" = "phs-blue", 
+  #                                            "Prostate" = "phs-green", 
+  #                                            "Breast" = "phs-teal", 
+  #                                            "Head and Neck" = "phs-liberty", 
+  #                                            "Cervical" = "phs-graphite"))) +
   ylab("Age-Sex Standardised Rate per 100,000") +
   xlab("Year") +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 185))
