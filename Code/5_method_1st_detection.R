@@ -1,5 +1,5 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 4_method_1st_detection
+# 5_method_1st_detection
 # Calum Purdie
 # 11/05/2022
 # Calculates standardised incidence rates and ratios by method of 1st detection
@@ -12,6 +12,7 @@
 ### 1 Housekeeping ----
 
 source(here::here("Code/1_housekeeping.R"))
+source(here::here("Code/2_data_extraction.R"))
 
 
 
