@@ -1,5 +1,5 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# 5_stage_at_diagnosis
+# 6_stage_at_diagnosis
 # Calum Purdie
 # 27/05/2022
 # Calculates standardised incidence rates and ratios by stage at diagnosis
@@ -12,6 +12,7 @@
 ### 1 Housekeeping ----
 
 source(here::here("Code/1_housekeeping.R"))
+source(here::here("Code/2_data_extraction.R"))
 
 
 
@@ -319,7 +320,7 @@ inc_rate_em_plot <- create_chart(inc_rate_output, "Emergency", "tnm_stage_2") +
                                              "phs-teal"))) +
   ylab("Age-Sex Standardised Rate per 100,000") + 
   xlab("Year") + 
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 53))
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 64))
 
 # # Save chart
 # 
@@ -332,6 +333,9 @@ inc_rate_em_plot <- create_chart(inc_rate_output, "Emergency", "tnm_stage_2") +
 
 # Same as above but with linear regression
 
+inc_rate_output <- inc_rate_output |> 
+  mutate(tnm_stage_2 = if_else(tnm_stage_2 == "X", "Unknown", tnm_stage_2))
+
 inc_rate_em_plot_reg <- create_regression_chart(inc_rate_output, 
                                                 "Emergency", "tnm_stage_2") + 
   scale_colour_manual("TNM Stage",
@@ -339,7 +343,7 @@ inc_rate_em_plot_reg <- create_regression_chart(inc_rate_output,
                                  "II" = phs_colours("phs-magenta"),
                                  "III" = phs_colours("phs-blue"), 
                                  "IV" = phs_colours("phs-green"), 
-                                 "X" = phs_colours("phs-teal"))) +
+                                 "Unknown" = phs_colours("phs-teal"))) +
   ylab("Age-Sex Standardised Rate per 100,000") + 
   xlab("Year") + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 63))
@@ -386,7 +390,7 @@ inc_rate_el_plot_reg <- create_regression_chart(inc_rate_output,
                                  "II" = phs_colours("phs-magenta"),
                                  "III" = phs_colours("phs-blue"), 
                                  "IV" = phs_colours("phs-green"), 
-                                 "X" = phs_colours("phs-teal"))) +
+                                 "Unknown" = phs_colours("phs-teal"))) +
   ylab("Age-Sex Standardised Rate per 100,000") + 
   xlab("Year") + 
   scale_y_continuous(expand = c(0, 0), limits = c(0, 95))
