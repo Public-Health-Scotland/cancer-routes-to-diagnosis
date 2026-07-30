@@ -176,7 +176,7 @@ calculate_incidence <- function(df, grouping_variables, standard_pop,
                                     (2 * sum_events) + 2),
            l_ci_multiplicand = l_ci_inv_chi_sq / 2 - sum_events,
            u_ci_multiplicand = u_ci_inv_chi_sq / 2 - sum_events) |> 
-    summarise(n = sum({{events}}), 
+    reframe(n = sum({{events}}), 
               inc = inc_std * 100000, 
               l_ci = (inc_std + (ci_sqrt * l_ci_multiplicand)) * 100000,
               u_ci = (inc_std + (ci_sqrt * u_ci_multiplicand)) * 100000) |> 
